@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace Employee.Domain
 {
@@ -9,17 +10,27 @@ namespace Employee.Domain
         private List<Employee> _emps;
 
         Response response = new Response();
-
+        public bool ValidStmt { get; private set; } = true;
         public EmpServices(List<Employee> employees)
         {
             _emps = employees ?? throw new ArgumentNullException(nameof(employees));
 
+        }
+        public void ValidateEmp() {
+
+            var task1 = Task.Factory.StartNew(() => CheckNoOfCEOs());
+            var task2 = Task.Factory.StartNew(() => CheckIfAllMgrAreListed());
+            var task3 = Task.Factory.StartNew(() => EmployeeWithMoreThanOneMgr());
+            var task4 = Task.Factory.StartNew(() => CheckCyclicRef());
+
+            Task.WaitAll(task1, task2, task3);
         }
 
         public Response CheckNoOfCEOs()
         {
             if (_emps.Where(e => e.ManagerId == string.Empty || e.ManagerId == null).Count() > 1)
             {
+                ValidStmt = false;
                 response.status = false;
                 response.Description = "More than one CEO listed";
             }
@@ -60,6 +71,7 @@ namespace Employee.Domain
             var MgrNotEmp = mgrIds.Except(empIds, StringComparer.OrdinalIgnoreCase).ToList();
             if (MgrNotEmp.Count > 0)
             {
+                ValidStmt = false;
                 response.status = false;
                 response.Description = "Some managers not listed as employees";
             }
@@ -80,6 +92,7 @@ namespace Employee.Domain
             foreach (var id in _emps.Select(u => u.Id).Distinct().Where(id => _emps.Where(x => x.Id == id)
             .Select(m => m.ManagerId).Distinct().Count() > 1).Select(id => id))
             {
+                ValidStmt = false;
                 response.status = false;
                 response.Description = $"Employee {id} has more than 1 Manager";
 
@@ -95,6 +108,7 @@ namespace Employee.Domain
                               where mgr.ManagerId == emp.Id
                               select new { })
             {
+                ValidStmt = false;
                 response.status = false;
                 response.Description = "Cyclic Reference Identified";
 
